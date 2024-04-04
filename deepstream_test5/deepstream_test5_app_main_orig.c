@@ -174,7 +174,6 @@ typedef struct _PairxFrame
 {
   gchar **first;
   gint *second;
-  gint lcNum;
 }PairxFrame;
 // =========================================
 
@@ -182,8 +181,7 @@ gint stream_num = 0;
 gint *lccounts_in;
 gint *lccounts_out;
 time_t start, end;
-// void getLCCount(NvDsFrameMeta *frame_meta, gint *counts_in, gint *conts_out, guint32 stream_id, PairxFrame *pares);
-void getLCCount(NvDsFrameMeta *frame_meta, guint32 stream_id, PairxFrame *pares);
+void getLCCount(NvDsFrameMeta *frame_meta, gint *counts_in, gint *conts_out, guint32 stream_id, PairxFrame *pares);
 
 typedef struct _OTAInfo
 {
@@ -364,7 +362,6 @@ meta_copy_func (gpointer data, gpointer user_data)
   NvDsUserMeta *user_meta = (NvDsUserMeta *) data;
   NvDsEventMsgMeta *srcMeta = (NvDsEventMsgMeta *) user_meta->user_meta_data;
   NvDsEventMsgMeta *dstMeta = NULL;
-  //  puts("-------------------- Meta_Copy_func ---------------");
 
   dstMeta = g_memdup (srcMeta, sizeof (NvDsEventMsgMeta));
 
@@ -387,7 +384,7 @@ meta_copy_func (gpointer data, gpointer user_data)
 
   if (srcMeta->extMsgSize > 0) {
     if (srcMeta->objType == NVDS_OBJECT_TYPE_CUSTOM) {
-      /*CentroComercialObject *srcObj = (CentroComercialObject *) srcMeta->extMsg;
+      CentroComercialObject *srcObj = (CentroComercialObject *) srcMeta->extMsg;
       CentroComercialObject *obj =
           (CentroComercialObject *) g_malloc0 (sizeof (CentroComercialObject));
 
@@ -405,8 +402,7 @@ meta_copy_func (gpointer data, gpointer user_data)
 
       dstMeta->extMsg = obj;
       //dstMeta->extMsg2 = cadena2;
-      dstMeta->extMsgSize = sizeof (CentroComercialObject);*/
-      dstMeta->extMsgSize = sizeof (PairxFrame);
+      dstMeta->extMsgSize = sizeof (CentroComercialObject);
     }
   }
 
@@ -419,7 +415,6 @@ meta_free_func (gpointer data, gpointer user_data)
   NvDsUserMeta *user_meta = (NvDsUserMeta *) data;
   NvDsEventMsgMeta *srcMeta = (NvDsEventMsgMeta *) user_meta->user_meta_data;
   user_meta->user_meta_data = NULL;
-  // puts("-------------------- Meta_Free_func ---------------");
 
   if (srcMeta->ts) {
     g_free (srcMeta->ts);
@@ -451,12 +446,16 @@ meta_free_func (gpointer data, gpointer user_data)
       if (obj->apparel)
         g_free (obj->apparel);
     } else if (srcMeta->objType == NVDS_OBJECT_TYPE_CUSTOM) {
-      /*CentroComercialObject *obj = (CentroComercialObject *) srcMeta->extMsg;
+      CentroComercialObject *obj = (CentroComercialObject *) srcMeta->extMsg;
       obj->cam = 0;
-      PairxFrame *pares2 = (PairxFrame *) srcMeta->extMsg2;*/
+      PairxFrame *pares2 = (PairxFrame *) srcMeta->extMsg2;
     }
-    /*g_free (srcMeta->extMsg);
-    srcMeta->extMsg = NULL;*/
+    g_free (srcMeta->extMsg);
+    srcMeta->extMsg = NULL;
+    // =============== SAUL =================
+    srcMeta->extMsg2 = NULL;
+    // srcMeta->lcNum = 0;
+    // ======================================
     srcMeta->extMsgSize = 0;
   }
   g_free (srcMeta);
@@ -475,8 +474,7 @@ generate_cc_meta (gpointer data, gint stream_id, gint counts_in, gint counts_out
 // GENERACIÓN DE MENSAJE
 
 static void
-// generate_event_msg_meta (gpointer data, gint counts_in, gint counts_out,
-generate_event_msg_meta (gpointer data,
+generate_event_msg_meta (gpointer data, gint counts_in, gint counts_out,
     gboolean useTs, GstClockTime ts, gchar * src_uri, gint stream_id,
     guint sensor_id, NvDsFrameMeta * frame_meta, PairxFrame *pares)
 {
@@ -507,32 +505,52 @@ generate_event_msg_meta (gpointer data,
   meta->type = NVDS_EVENT_ENTRY;
   meta->objType = NVDS_OBJECT_TYPE_CUSTOM;
   
+  CentroComercialObject *obj =
+      (CentroComercialObject *) g_malloc0 (sizeof (CentroComercialObject));
+  generate_cc_meta (obj, stream_id, counts_in, counts_out);
+  meta->extMsg = obj;
+  
   
   // ===================== SAUL ===============================
+  // Copio los datos de pares a pares2, 
+  gint lcNum = 0;
   PairxFrame *pares2 =
       (PairxFrame *) g_malloc0 (sizeof (PairxFrame));
 
   pares2->first = g_new(gchar*, 50);
   pares2->second = g_new(gint, 50);
   
-
-  // Numero de line-crossings en el frame actual
-  pares2->lcNum = pares->lcNum;
-
-  /*Copiamos los datos en un puntero a la estructura PairxFrame, pares2  */
-  for(int i = 0; i < pares2->lcNum; i++){
-    pares2->first[i] = g_strdup(pares->first[i]);
-    pares2->second[i] = pares->second[i];
+  if(stream_id == 0){
+    for(int i = 0; i < 5; i++){
+      pares2->first[i] = pares->first[i];
+      pares2->second[i] = pares->second[i];
+    }
+    lcNum = 5;
+  }else{
+    for(int i = 0; i < 2; i++){
+      pares2->first[i] = pares->first[i];
+      pares2->second[i] = pares->second[i];
+    }
+    lcNum = 2;
   }
 
+  // for (int i = 0; i < 50; i++){
+  //   if(pares->first[i] == NULL){
+  //     break;
+  //   }
+  //   pares2->first[i] = pares->first[i];
+  //   pares2->second[i] = pares->second[i];
+  //   lcNum++;
+  // }
 
-  
-  meta->extMsg = pares2;
+  meta->extMsg2 = pares2;
   meta->streamId = stream_id;
-  meta->lcNum = pares2->lcNum;
+  meta->lcNum = lcNum;
   // ==========================================================
-  meta->extMsgSize = sizeof (PairxFrame);
-  
+
+  meta->extMsgSize = sizeof (CentroComercialObject);
+  // g_free(pares2->first);
+  // g_free(pares2->second);
 }
 
 
@@ -544,10 +562,10 @@ bbox_generated_probe_after_analytics (AppCtx * appCtx, GstBuffer * buf,
   NvDsObjectMeta *obj_meta = NULL;
   GstClockTime buffer_pts = 0;
   guint32 stream_id = 0;
-  //  puts("-------------------- NEW FRAME ---------------");
+
   for (NvDsMetaList * l_frame = batch_meta->frame_meta_list; l_frame != NULL;
       l_frame = l_frame->next) {
-    //  puts("-------------------- Bbox_generated_probe ---------------");
+
     NvDsFrameMeta *frame_meta = l_frame->data;
     stream_id = frame_meta->source_id;
 
@@ -592,9 +610,9 @@ bbox_generated_probe_after_analytics (AppCtx * appCtx, GstBuffer * buf,
     PairxFrame pares;
     pares.first = g_new(gchar*, 50);
     pares.second = g_new(gint, 50);
-    pares.lcNum = 0;
 
-    getLCCount(frame_meta, stream_id, &pares);
+    getLCCount(frame_meta, lccounts_in, lccounts_out, stream_id, &pares);
+
     // =====================================================================================================
 
     end = time(NULL);
@@ -605,8 +623,7 @@ bbox_generated_probe_after_analytics (AppCtx * appCtx, GstBuffer * buf,
     NvDsEventMsgMeta *msg_meta =
         (NvDsEventMsgMeta *) g_malloc0 (sizeof (NvDsEventMsgMeta));
     /**< useTs NOTE: Pass FALSE for files without base-timestamp in URI */
-    // generate_event_msg_meta (msg_meta, lccounts_in[i], lccounts_out[i], TRUE, 
-    generate_event_msg_meta (msg_meta, TRUE, 
+    generate_event_msg_meta (msg_meta, lccounts_in[i], lccounts_out[i], TRUE, 
         buffer_pts,
         appCtx->config.multi_source_config[i].uri, i,
         appCtx->config.multi_source_config[i].camera_id,
@@ -633,18 +650,18 @@ bbox_generated_probe_after_analytics (AppCtx * appCtx, GstBuffer * buf,
     } else {
       g_print ("Error in attaching event meta to buffer\n");
     }
-
+    //printf("%d\n", i);
+    //lccounts_in[i] = 0;
+    //lccounts_out[i] = 0;
+    //} //end for
     start = time(NULL);
+    //puts("--------CURRENT FRAME--------");
+    //} //end if
     testAppCtx->streams[stream_id].frameCount++;
 
     // ============= SAUL =================
-    for(int j =0; j < pares.lcNum; j++) {
-      g_free(pares.first[j]);
-      pares.first[j] = NULL;
-    }
-    pares.lcNum = 0;
-    g_free(pares.first); pares.first = NULL;
-    g_free(pares.second); pares.second = NULL;
+    g_free(pares.first);
+    g_free(pares.second);
     // ===================================
   }
 }

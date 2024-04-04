@@ -47,9 +47,10 @@ typedef struct _PairxFrame
 {
   gchar **first;
   gint *second;
+  gint lcNum;
 }PairxFrame;
 
-extern "C" void getLCCount(NvDsFrameMeta *frame_meta, gint *counts_in, gint *counts_out, guint32 stream_id, PairxFrame *pares)
+extern "C" void getLCCount(NvDsFrameMeta *frame_meta, guint32 stream_id, PairxFrame *pares)
 {
   stringstream out_string;
   string lc_type = "";
@@ -73,26 +74,7 @@ extern "C" void getLCCount(NvDsFrameMeta *frame_meta, gint *counts_in, gint *cou
       pares->first[ii] = g_strdup(status.first.c_str());
       pares->second[ii] = status.second;
       ii++;
-      //}
-      // =====================================================================
-      lc_type = status.first.substr(0, status.first.find("-"));
-      if (lc_type == LC_IN)
-        counts_in[stream_id] += status.second; 
-      else if (lc_type == LC_OUT)
-        counts_out[stream_id] += status.second; 
     }
+    pares->lcNum = ii;
   }
 }
-
-// ================== SAUL TEST =========================
-  // Imprimir el contenido de pares->first
-  /*printf("Contenido de pares: -------------\n");
-  if (stream_id == 0){
-    for (int i = 0; i < 5; ++i) {
-      printf("Elemento %d: %s | %d\n", i + 1, pares->first[i], pares->second[i]);
-    }
-  }else{
-    for (int i = 0; i < 2; ++i) {
-      printf("Elemento %d: %s | %d\n", i + 1, pares->first[i], pares->second[i]);
-    }
-  }*/

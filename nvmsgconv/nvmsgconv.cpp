@@ -104,6 +104,7 @@ typedef struct _PairxFrame
 {
   gchar **first;
   gint *second;
+  gint lcNum;
 }PairxFrame;
 
 // ======================================
@@ -686,17 +687,30 @@ generate_object_cc (NvDsMsg2pCtx *ctx, NvDsEventMsgMeta *meta)
         // ==================== SAUL =========================
         gint stream_id = (gint) meta->streamId;
         gint lcNum = (gint) meta->lcNum;
-        PairxFrame *pares = (PairxFrame *) meta->extMsg2;
+        PairxFrame *pares = (PairxFrame *) meta->extMsg;
 
-        // if (dsObj && pares->second[0]>0) {
+        printf("-------------------- Stream_id = %d ---------------\n",stream_id);
+        for(int j =0; j < lcNum; j++) {
+          if(pares->first[j] != NULL)
+            printf("pares->second[%d] = %d, pares->first[%d] = %s\n", j, pares->second[j], j, pares->first[j]);
+        }
+
         if (pares) {
-
           json_object_set_int_member (jobject, "cam", stream_id);
-
-          for (int indice = 0; indice < lcNum; ++indice) {
-            json_object_set_int_member (jobject, pares->first[indice], pares->second[indice]);
+          
+          for (int i = 0; i < lcNum; ++i) {
+            json_object_set_int_member (jobject, pares->first[i], pares->second[i]);
           }
         }
+        
+        //LIBERAMOS MEMORIA DE EXTMSG2
+        for(int j =0; j < lcNum; j++) {
+          g_free(pares->first[j]);
+          pares->first[j] = NULL;
+        }
+        g_free(pares->first); pares->first = NULL;
+        g_free(pares->second); pares->second = NULL;
+        g_free(pares); pares = NULL;
         // =================================================
       } else {
         // No cc object in meta data. Attach empty person sub object.
