@@ -95,15 +95,11 @@ struct NvDsPayloadPriv {
 };
 
 // ================ SAUL ================
-struct MensageCadena{
-gchar *cadenas;
-};
-
 
 typedef struct _PairxFrame
 {
-  gchar **first;
-  gint *second;
+  gchar **name;
+  gint *count;
   gint lcNum;
 }PairxFrame;
 
@@ -689,27 +685,34 @@ generate_object_cc (NvDsMsg2pCtx *ctx, NvDsEventMsgMeta *meta)
         gint lcNum = (gint) meta->lcNum;
         PairxFrame *pares = (PairxFrame *) meta->extMsg;
 
-        printf("-------------------- Stream_id = %d ---------------\n",stream_id);
+        // printf("-------------------- Stream_id = %d ---------------\n",stream_id);
+        // for(int j =0; j < lcNum; j++) {
+        //   if(pares->first[j] != NULL)
+        //     printf("pares->second[%d] = %d, pares->first[%d] = %s\n", j, pares->second[j], j, pares->first[j]);
+        // }
+
         for(int j =0; j < lcNum; j++) {
-          if(pares->first[j] != NULL)
-            printf("pares->second[%d] = %d, pares->first[%d] = %s\n", j, pares->second[j], j, pares->first[j]);
+          if(pares->count[j] > 0)
+            printf("%d",pares->count[j]);
         }
 
-        if (pares) {
+        // if (pares) {
+        if (lcNum > 0) {
           json_object_set_int_member (jobject, "cam", stream_id);
           
           for (int i = 0; i < lcNum; ++i) {
-            json_object_set_int_member (jobject, pares->first[i], pares->second[i]);
+            json_object_set_int_member (jobject, pares->name[i], pares->count[i]);
           }
         }
         
-        //LIBERAMOS MEMORIA DE EXTMSG2
+        //LIBERAMOS MEMORIA DE EXTMSG
         for(int j =0; j < lcNum; j++) {
-          g_free(pares->first[j]);
-          pares->first[j] = NULL;
+          g_free(pares->name[j]);
+          pares->name[j] = NULL;
+          pares->count[j] = 0;
         }
-        g_free(pares->first); pares->first = NULL;
-        g_free(pares->second); pares->second = NULL;
+        g_free(pares->name); pares->name = NULL;
+        g_free(pares->count); pares->count = NULL;
         g_free(pares); pares = NULL;
         // =================================================
       } else {

@@ -45,16 +45,13 @@ using namespace std;
 
 typedef struct _PairxFrame
 {
-  gchar **first;
-  gint *second;
+  gchar **name;
+  gint *count;
   gint lcNum;
 }PairxFrame;
 
 extern "C" void getLCCount(NvDsFrameMeta *frame_meta, guint32 stream_id, PairxFrame *pares)
-{
-  stringstream out_string;
-  string lc_type = "";
-  
+{ 
   /* Iterate user metadata in frames to search analytics metadata */
   for (NvDsMetaList *l_user = frame_meta->frame_user_meta_list; l_user != NULL; l_user = l_user->next)
   {
@@ -67,13 +64,19 @@ extern "C" void getLCCount(NvDsFrameMeta *frame_meta, guint32 stream_id, PairxFr
     /* convert to  metadata */
     NvDsAnalyticsFrameMeta *meta = (NvDsAnalyticsFrameMeta *) user_meta->user_meta_data;
     /* Get the labels from nvdsanalytics config file */
+
+    for (std::pair<std::string, uint32_t> status_cum : meta->objLCCumCnt){
+      printf("cam = %d | %s | %d\n",stream_id, status_cum.first.c_str(), status_cum.second);
+    } 
+
     int ii = 0;
     for (std::pair<std::string, uint32_t> status : meta->objLCCurrCnt){     
       // ============================= SAUL ===================================
-      //if(status.second != 0){
-      pares->first[ii] = g_strdup(status.first.c_str());
-      pares->second[ii] = status.second;
-      ii++;
+      if(status.second != 0){
+        pares->name[ii] = g_strdup(status.first.c_str());
+        pares->count[ii] = status.second;
+        ii++;
+      }
     }
     pares->lcNum = ii;
   }

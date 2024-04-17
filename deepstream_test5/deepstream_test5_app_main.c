@@ -170,12 +170,142 @@ static struct timeval ota_completion_time;
 
 
 // ================= Saul ==================
+
+typedef struct NvDsEventMsgMeta {
+  /** Holds the event's type. */
+  NvDsEventType type;
+  /** Holds the object's type. */
+  NvDsObjectType objType;
+  /** Holds the object's bounding box. */
+  NvDsRect bbox;
+  /** Holds the object's geolocation. */
+  NvDsGeoLocation location;
+  /** Holds the object's coordinates. */
+  NvDsCoordinate coordinate;
+  /** Holds the object's signature. */
+  NvDsObjectSignature objSignature;
+  /** Holds the object's class ID. */
+  gint objClassId;
+  /** Holds the ID of the sensor that generated the event. */
+  gint sensorId;
+  /** Holds the ID of the analytics module that generated the event. */
+  gint moduleId;
+  /** Holds the ID of the place related to the object. */
+  gint placeId;
+  /** Holds the ID of the component (plugin) that generated this event. */
+  gint componentId;
+  /** Holds the video frame ID of this event. */
+  gint frameId;
+  /** Holds the confidence level of the inference. */
+  gdouble confidence;
+  /** Holds the object's tracking ID. */
+  gint trackingId;
+  /** Holds a pointer to the generated event's timestamp. */
+  gchar *ts;
+  /** Holds a pointer to the detected or inferred object's ID. */
+  gchar *objectId;
+
+  /** Holds a pointer to a string containing the sensor's identity. */
+  gchar *sensorStr;
+  /** Holds a pointer to a string containing other attributes associated with
+   the object. */
+  gchar *otherAttrs;
+  /** Holds a pointer to the name of the video file. */
+  gchar *videoPath;
+  /** Holds a pointer to event message meta data. This can be used to hold
+   data that can't be accommodated in the existing fields, or an associated
+   object (representing a vehicle, person, face, etc.). */
+  gpointer extMsg;
+  /** Holds the number of line-crossings captured in the current frame */
+  gint lcNum;
+  /** Holds the stream ID */
+  gint streamId;
+  /** Holds the size of the custom object at @a extMsg. */
+  guint extMsgSize;
+  
+  //---------------------- CUSTOM CODE --------------------//
+  
+  // Flujo Meta
+  gint fcamera_id;
+  gint fframe_init;
+  gint fframe_fin;
+  gint ffreq;
+  gint fobj_type;
+  gint lc_names_size;
+  gint cross_count;
+  
+  // Aforo Meta
+  // OLD
+  gint aanalytic;
+  gint aperson_max_count[10];
+  gint aperson_min_count[10];
+  gint acar_max_count[10];
+  gint acar_min_count[10];
+  gint aperson_roi_id[10];
+  gint acar_roi_id[10];
+  ////////
+
+  
+  // AFORO
+  gint acamera_id;
+  gint aframe_init;
+  gint aframe_fin;
+  gint afreq;
+  gint aavg_person_count[10];
+  gint aavg_car_count[10];
+  gint aobj_type;
+  gint aperson_array;
+  gint acar_array;
+
+  // Permanencia OLD
+  gint person_ids[1000];
+  gint car_ids[1000];
+  gint person_size;
+  gint car_size;
+  gint permanencia_person;
+  gint permanencia_car;
+
+  // PERMANENCIA
+  gint permanencia_ids[1000];
+  gint permanencia_size;
+  gint permanencia_is_active;
+  
+  // Atributos Meta
+  gint sgie_names_size;
+  gint count_males[10];
+  gint count_females[10];
+  
+
+  gint m_1_18[10];
+  gint m_19_50[10];
+  gint m_gt_50[10];
+
+  gint f_1_18[10];
+  gint f_19_50[10];
+  gint f_gt_50[10];
+  //-----------------------------------------------------------------------------------------//
+  //
+} NvDsEventMsgMeta;
+
+typedef struct _NvDsEvent {
+  /** Holds the type of event. */
+  NvDsEventType eventType;
+  /** Holds a pointer to event metadata. */
+  NvDsEventMsgMeta *metadata;
+} NvDsEvent;
+
+
+
+
 typedef struct _PairxFrame
 {
-  gchar **first;
-  gint *second;
+  gchar **name;
+  gint *count;
   gint lcNum;
 }PairxFrame;
+
+gint FrameNumber = 0;
+gint lcCount = 0;
 // =========================================
 
 gint stream_num = 0;
@@ -397,11 +527,6 @@ meta_copy_func (gpointer data, gpointer user_data)
 
       obj->in = srcObj->in;
       obj->out = srcObj->out;
-      // ------------------------ SAUL -------------------------
-
-      // Quizas aqui falte poner algo como el obj, pero con PairxFrame
-
-      // -------------------------------------------------------
 
       dstMeta->extMsg = obj;
       //dstMeta->extMsg2 = cadena2;
@@ -512,17 +637,17 @@ generate_event_msg_meta (gpointer data,
   PairxFrame *pares2 =
       (PairxFrame *) g_malloc0 (sizeof (PairxFrame));
 
-  pares2->first = g_new(gchar*, 50);
-  pares2->second = g_new(gint, 50);
+  pares2->name = g_new(gchar*, 50);
+  pares2->count = g_new(gint, 50);
   
-
+  
   // Numero de line-crossings en el frame actual
   pares2->lcNum = pares->lcNum;
 
-  /*Copiamos los datos en un puntero a la estructura PairxFrame, pares2  */
+  /*Copiamos los datos a la estructura PairxFrame, pares2  */
   for(int i = 0; i < pares2->lcNum; i++){
-    pares2->first[i] = g_strdup(pares->first[i]);
-    pares2->second[i] = pares->second[i];
+    pares2->name[i] = g_strdup(pares->name[i]);
+    pares2->count[i] = pares->count[i];
   }
 
 
@@ -541,111 +666,126 @@ bbox_generated_probe_after_analytics (AppCtx * appCtx, GstBuffer * buf,
     NvDsBatchMeta * batch_meta, guint index)
 {
 
-  NvDsObjectMeta *obj_meta = NULL;
-  GstClockTime buffer_pts = 0;
-  guint32 stream_id = 0;
-  //  puts("-------------------- NEW FRAME ---------------");
-  for (NvDsMetaList * l_frame = batch_meta->frame_meta_list; l_frame != NULL;
-      l_frame = l_frame->next) {
-    //  puts("-------------------- Bbox_generated_probe ---------------");
-    NvDsFrameMeta *frame_meta = l_frame->data;
-    stream_id = frame_meta->source_id;
+  /* 
+  batch_meta -->> Contiene frames de diferentes camaras/stream_ids, en este caso
+  como hay 4 stream_ids (0,1,2,3) habran 4 frames en el primer batch_meta procesado
+  */
+  if(FrameNumber < 10001){
+    FrameNumber++;
+    // printf("TotalCount of Lc-In + Lc-Out = %d\n", lcCount);
 
-    GstClockTime buf_ntp_time = 0;
-    if (playback_utc == FALSE) {
-      StreamSourceInfo *src_stream = &testAppCtx->streams[stream_id];
-      buf_ntp_time = frame_meta->ntp_timestamp;
+    NvDsObjectMeta *obj_meta = NULL;
+    GstClockTime buffer_pts = 0;
+    guint32 stream_id = 0;
+    //  puts("-------------------- NEW FRAME ---------------");
+    for (NvDsMetaList * l_frame = batch_meta->frame_meta_list; l_frame != NULL;
+        l_frame = l_frame->next) {
+      //  puts("-------------------- Bbox_generated_probe ---------------");
 
-      if (buf_ntp_time < src_stream->last_ntp_time) {
-        NVGSTDS_WARN_MSG_V ("Source %d: NTP timestamps are backward in time."
-            " Current: %lu previous: %lu", stream_id, buf_ntp_time,
-            src_stream->last_ntp_time);
+      NvDsFrameMeta *frame_meta = l_frame->data;
+      stream_id = frame_meta->source_id;
+
+      GstClockTime buf_ntp_time = 0;
+      if (playback_utc == FALSE) {
+        StreamSourceInfo *src_stream = &testAppCtx->streams[stream_id];
+        buf_ntp_time = frame_meta->ntp_timestamp;
+
+        if (buf_ntp_time < src_stream->last_ntp_time) {
+          NVGSTDS_WARN_MSG_V ("Source %d: NTP timestamps are backward in time."
+              " Current: %lu previous: %lu", stream_id, buf_ntp_time,
+              src_stream->last_ntp_time);
+        }
+        src_stream->last_ntp_time = buf_ntp_time;
       }
-      src_stream->last_ntp_time = buf_ntp_time;
-    }
 
-    GList *l;
+      GList *l;
 
-    /* Frequency of messages to be send will be based on use case.
-      * Here message is being sent for first object every 30 frames.
-      */
-    buffer_pts = frame_meta->buf_pts;
-    if (!appCtx->config.streammux_config.pipeline_width
-        || !appCtx->config.streammux_config.pipeline_height) {
-      g_print ("invalid pipeline params\n");
-      return;
-    }
-    LOGD ("stream %d==%d [%d X %d]\n", frame_meta->source_id,
-        frame_meta->pad_index, frame_meta->source_frame_width,
-        frame_meta->source_frame_height);
-
-    if (playback_utc == FALSE) {
-      /** Use the buffer-NTP-time derived from this stream's RTCP Sender
-       * Report here:
-       */
-      buffer_pts = buf_ntp_time;
-    }
-    
-    
-    
-    // ==================================== SAUL =============================================
-    PairxFrame pares;
-    pares.first = g_new(gchar*, 50);
-    pares.second = g_new(gint, 50);
-    pares.lcNum = 0;
-
-    getLCCount(frame_meta, stream_id, &pares);
-    // =====================================================================================================
-
-    end = time(NULL);
-
-
-    /** Generate NvDsEventMsgMeta for every frame */
-    gint i = stream_id;
-    NvDsEventMsgMeta *msg_meta =
-        (NvDsEventMsgMeta *) g_malloc0 (sizeof (NvDsEventMsgMeta));
-    /**< useTs NOTE: Pass FALSE for files without base-timestamp in URI */
-    // generate_event_msg_meta (msg_meta, lccounts_in[i], lccounts_out[i], TRUE, 
-    generate_event_msg_meta (msg_meta, TRUE, 
-        buffer_pts,
-        appCtx->config.multi_source_config[i].uri, i,
-        appCtx->config.multi_source_config[i].camera_id,
-        frame_meta, &pares);
-
-    testAppCtx->streams[stream_id].meta_number++;
-    NvDsUserMeta *user_event_meta =
-        nvds_acquire_user_meta_from_pool (batch_meta);
-    if (user_event_meta) {
-      /*
-        * Since generated event metadata has custom objects for
-        * Vehicle / Person which are allocated dynamically, we are
-        * setting copy and free function to handle those fields when
-        * metadata copy happens between two components.
+      /* Frequency of messages to be send will be based on use case.
+        * Here message is being sent for first object every 30 frames.
         */
-      user_event_meta->user_meta_data = (void *) msg_meta;
-      user_event_meta->base_meta.batch_meta = batch_meta;
-      user_event_meta->base_meta.meta_type = NVDS_EVENT_MSG_META;
-      user_event_meta->base_meta.copy_func =
-          (NvDsMetaCopyFunc) meta_copy_func;
-      user_event_meta->base_meta.release_func =
-          (NvDsMetaReleaseFunc) meta_free_func;
-      nvds_add_user_meta_to_frame (frame_meta, user_event_meta);
-    } else {
-      g_print ("Error in attaching event meta to buffer\n");
-    }
+      buffer_pts = frame_meta->buf_pts;
+      if (!appCtx->config.streammux_config.pipeline_width
+          || !appCtx->config.streammux_config.pipeline_height) {
+        g_print ("invalid pipeline params\n");
+        return;
+      }
+      LOGD ("stream %d==%d [%d X %d]\n", frame_meta->source_id,
+          frame_meta->pad_index, frame_meta->source_frame_width,
+          frame_meta->source_frame_height);
 
-    start = time(NULL);
-    testAppCtx->streams[stream_id].frameCount++;
+      if (playback_utc == FALSE) {
+        /** Use the buffer-NTP-time derived from this stream's RTCP Sender
+         * Report here:
+         */
+        buffer_pts = buf_ntp_time;
+      }
+      
 
-    // ============= SAUL =================
-    for(int j =0; j < pares.lcNum; j++) {
-      g_free(pares.first[j]);
-      pares.first[j] = NULL;
+      // ==================================== SAUL =============================================
+      PairxFrame pares;
+      pares.name = g_new(gchar*, 50);
+      pares.count = g_new(gint, 50);
+      pares.lcNum = 0;
+      
+      getLCCount(frame_meta, stream_id, &pares);
+      // =====================================================================================================
+      if(pares.lcNum > 0){
+        //Conteo de lc-in+lc-out
+        /*for (int i = 0; i < pares.lcNum; i++)
+          lcCount += pares.count[i];
+        */
+
+        end = time(NULL);
+
+        /** Generate NvDsEventMsgMeta for every frame */
+        gint i = stream_id;
+        NvDsEventMsgMeta *msg_meta =
+            (NvDsEventMsgMeta *) g_malloc0 (sizeof (NvDsEventMsgMeta));
+        /**< useTs NOTE: Pass FALSE for files without base-timestamp in URI */
+        // generate_event_msg_meta (msg_meta, lccounts_in[i], lccounts_out[i], TRUE, 
+        generate_event_msg_meta (msg_meta, TRUE, 
+            buffer_pts,
+            appCtx->config.multi_source_config[i].uri, i,
+            appCtx->config.multi_source_config[i].camera_id,
+            frame_meta, &pares);
+
+        testAppCtx->streams[stream_id].meta_number++;
+        NvDsUserMeta *user_event_meta =
+            nvds_acquire_user_meta_from_pool (batch_meta);
+        if (user_event_meta) {
+          /*
+            * Since generated event metadata has custom objects for
+            * Vehicle / Person which are allocated dynamically, we are
+            * setting copy and free function to handle those fields when
+            * metadata copy happens between two components.
+            */
+          user_event_meta->user_meta_data = (void *) msg_meta;
+          user_event_meta->base_meta.batch_meta = batch_meta;
+          user_event_meta->base_meta.meta_type = NVDS_EVENT_MSG_META;
+          user_event_meta->base_meta.copy_func =
+              (NvDsMetaCopyFunc) meta_copy_func;
+          user_event_meta->base_meta.release_func =
+              (NvDsMetaReleaseFunc) meta_free_func;
+          nvds_add_user_meta_to_frame (frame_meta, user_event_meta);
+        } else {
+          g_print ("Error in attaching event meta to buffer\n");
+        }
+
+        start = time(NULL);
+        testAppCtx->streams[stream_id].frameCount++;
+
+        // ============= SAUL =================
+        for(int j =0; j < pares.lcNum; j++) {
+          g_free(pares.name[j]);
+          pares.name[j] = NULL;
+          pares.count[j] = 0;
+        }
+        pares.lcNum = 0;
+        g_free(pares.name); pares.name = NULL;
+        g_free(pares.count); pares.count = NULL;
+        // ===================================
+      }
     }
-    pares.lcNum = 0;
-    g_free(pares.first); pares.first = NULL;
-    g_free(pares.second); pares.second = NULL;
-    // ===================================
   }
 }
 

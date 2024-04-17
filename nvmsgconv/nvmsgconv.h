@@ -29,6 +29,134 @@ extern "C"
 {
 #endif
 
+// ================= Saul ==================
+
+typedef struct NvDsEventMsgMeta {
+  /** Holds the event's type. */
+  NvDsEventType type;
+  /** Holds the object's type. */
+  NvDsObjectType objType;
+  /** Holds the object's bounding box. */
+  NvDsRect bbox;
+  /** Holds the object's geolocation. */
+  NvDsGeoLocation location;
+  /** Holds the object's coordinates. */
+  NvDsCoordinate coordinate;
+  /** Holds the object's signature. */
+  NvDsObjectSignature objSignature;
+  /** Holds the object's class ID. */
+  gint objClassId;
+  /** Holds the ID of the sensor that generated the event. */
+  gint sensorId;
+  /** Holds the ID of the analytics module that generated the event. */
+  gint moduleId;
+  /** Holds the ID of the place related to the object. */
+  gint placeId;
+  /** Holds the ID of the component (plugin) that generated this event. */
+  gint componentId;
+  /** Holds the video frame ID of this event. */
+  gint frameId;
+  /** Holds the confidence level of the inference. */
+  gdouble confidence;
+  /** Holds the object's tracking ID. */
+  gint trackingId;
+  /** Holds a pointer to the generated event's timestamp. */
+  gchar *ts;
+  /** Holds a pointer to the detected or inferred object's ID. */
+  gchar *objectId;
+
+  /** Holds a pointer to a string containing the sensor's identity. */
+  gchar *sensorStr;
+  /** Holds a pointer to a string containing other attributes associated with
+   the object. */
+  gchar *otherAttrs;
+  /** Holds a pointer to the name of the video file. */
+  gchar *videoPath;
+  /** Holds a pointer to event message meta data. This can be used to hold
+   data that can't be accommodated in the existing fields, or an associated
+   object (representing a vehicle, person, face, etc.). */
+  gpointer extMsg;
+  /** Holds the number of line-crossings captured in the current frame */
+  gint lcNum;
+  /** Holds the stream ID */
+  gint streamId;
+  /** Holds the size of the custom object at @a extMsg. */
+  guint extMsgSize;
+  
+  //---------------------- CUSTOM CODE --------------------//
+  
+  // Flujo Meta
+  gint fcamera_id;
+  gint fframe_init;
+  gint fframe_fin;
+  gint ffreq;
+  gint fobj_type;
+  gint lc_names_size;
+  gint cross_count;
+  
+  // Aforo Meta
+  // OLD
+  gint aanalytic;
+  gint aperson_max_count[10];
+  gint aperson_min_count[10];
+  gint acar_max_count[10];
+  gint acar_min_count[10];
+  gint aperson_roi_id[10];
+  gint acar_roi_id[10];
+  ////////
+
+  
+  // AFORO
+  gint acamera_id;
+  gint aframe_init;
+  gint aframe_fin;
+  gint afreq;
+  gint aavg_person_count[10];
+  gint aavg_car_count[10];
+  gint aobj_type;
+  gint aperson_array;
+  gint acar_array;
+
+  // Permanencia OLD
+  gint person_ids[1000];
+  gint car_ids[1000];
+  gint person_size;
+  gint car_size;
+  gint permanencia_person;
+  gint permanencia_car;
+
+  // PERMANENCIA
+  gint permanencia_ids[1000];
+  gint permanencia_size;
+  gint permanencia_is_active;
+  
+  // Atributos Meta
+  gint sgie_names_size;
+  gint count_males[10];
+  gint count_females[10];
+  
+
+  gint m_1_18[10];
+  gint m_19_50[10];
+  gint m_gt_50[10];
+
+  gint f_1_18[10];
+  gint f_19_50[10];
+  gint f_gt_50[10];
+  //-----------------------------------------------------------------------------------------//
+  //
+} NvDsEventMsgMeta;
+
+typedef struct _NvDsEvent {
+  /** Holds the type of event. */
+  NvDsEventType eventType;
+  /** Holds a pointer to event metadata. */
+  NvDsEventMsgMeta *metadata;
+} NvDsEvent;
+
+// ========================================================
+
+
 /**
  * @ref NvDsMsg2pCtx is structure for library context.
  */
