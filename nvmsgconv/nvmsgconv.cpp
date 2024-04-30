@@ -691,10 +691,10 @@ generate_object_cc (NvDsMsg2pCtx *ctx, NvDsEventMsgMeta *meta)
         //     printf("pares->second[%d] = %d, pares->first[%d] = %s\n", j, pares->second[j], j, pares->first[j]);
         // }
 
-        for(int j =0; j < lcNum; j++) {
-          if(pares->count[j] > 0)
-            printf("%d",pares->count[j]);
-        }
+        // for(int j =0; j < lcNum; j++) {
+        //   if(pares->count[j] > 0)
+        //     printf("%d",pares->count[j]);
+        // }
 
         // if (pares) {
         if (lcNum > 0) {

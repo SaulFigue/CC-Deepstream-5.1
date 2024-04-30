@@ -670,7 +670,8 @@ bbox_generated_probe_after_analytics (AppCtx * appCtx, GstBuffer * buf,
   batch_meta -->> Contiene frames de diferentes camaras/stream_ids, en este caso
   como hay 4 stream_ids (0,1,2,3) habran 4 frames en el primer batch_meta procesado
   */
-  if(FrameNumber < 10001){
+  // if(FrameNumber < 10001){
+  if(True){
     FrameNumber++;
     // printf("TotalCount of Lc-In + Lc-Out = %d\n", lcCount);
 

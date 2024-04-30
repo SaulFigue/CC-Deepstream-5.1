@@ -65,9 +65,9 @@ extern "C" void getLCCount(NvDsFrameMeta *frame_meta, guint32 stream_id, PairxFr
     NvDsAnalyticsFrameMeta *meta = (NvDsAnalyticsFrameMeta *) user_meta->user_meta_data;
     /* Get the labels from nvdsanalytics config file */
 
-    for (std::pair<std::string, uint32_t> status_cum : meta->objLCCumCnt){
-      printf("cam = %d | %s | %d\n",stream_id, status_cum.first.c_str(), status_cum.second);
-    } 
+    // for (std::pair<std::string, uint32_t> status_cum : meta->objLCCumCnt){
+    //   printf("cam = %d | %s | %d\n",stream_id, status_cum.first.c_str(), status_cum.second);
+    // } 
 
     int ii = 0;
     for (std::pair<std::string, uint32_t> status : meta->objLCCurrCnt){     

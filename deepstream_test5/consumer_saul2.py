@@ -6,15 +6,15 @@ import psycopg2
 
 
 
-idx = 0
+# idx = 0
 
 def insert_db(registers):
-    global idx
+    # global idx
 
     if registers:
         for reg in registers:
-            idx += 1
-            print(f"{idx:<2} ||   {reg['id_cc']}   ||  {reg['id_cam']}  ||  {reg['acceso_id']}  ||       {reg['nombre_comercial_acceso']}       || {reg['timestamp']} || {reg['date']} || {reg['year']} ||    {reg['month']}  ||   {reg['day']} ||   {reg['hour']}  ||    {reg['in']}     ||    {reg['out']}    ||")
+            # idx += 1
+            # print(f"{idx:<2} ||   {reg['id_cc']}   ||  {reg['id_cam']}  ||  {reg['acceso_id']}  ||       {reg['nombre_comercial_acceso']}       || {reg['timestamp']} || {reg['date']} || {reg['year']} ||    {reg['month']}  ||   {reg['day']} ||   {reg['hour']}  ||    {reg['in']}     ||    {reg['out']}    ||")
             
             # Query para ingresar datos a la base
             # serie = f"select setval('"ing_vm_id_seq"', (select MAX(id) from ing_vm)+1);"
@@ -185,7 +185,7 @@ def consume_messages():
             # partitions es una lista [] llena de ConsumerRecord(... values={cam,in,out}).. 
             # partitions = [ConRc(), ConRc(),...]
             partitions = []
-            while time.time() - start_time < 5:
+            while time.time() - start_time < 30:
                 partition = consumer.poll(0).values()
                 if partition:
                     partition = list(partition)[0]
@@ -217,7 +217,7 @@ try:
         user="postgres", # Se puede buscar el nombre con \du o SELECT usename FROM pg_user;
         password="clave", # Se puede cambiar contrasena con: ALTER USER nombre_de_usuario WITH PASSWORD 'nueva_contraseña';
         host="localhost", # por defecto
-        port="10008" # por defecto, pero se puede buscar con: SELECT inet_server_addr() AS server_address, current_setting('port') AS port;p
+        port="10001" # por defecto, pero se puede buscar con: SELECT inet_server_addr() AS server_address, current_setting('port') AS port;p
 
     )
     #Conexion local
